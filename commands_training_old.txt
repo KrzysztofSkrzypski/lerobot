@@ -1,0 +1,72 @@
+!pip install -q condacolab
+import condacolab
+condacolab.install()
+# ### restart session ###
+
+!git clone https://github.com/huggingface/lerobot.git
+%cd lerobot
+!conda install ffmpeg=7.1.1 -c conda-forge
+!pip install -e .
+
+# !pip install huggingface_hub[cli]
+from huggingface_hub import login
+login() 
+from huggingface_hub import whoami
+print(whoami())
+
+!wandb login
+
+%cd /content/lerobot
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+%cd /content/lerobot
+
+# test 1000 steps run
+!python lerobot/scripts/train.py \
+    --dataset.repo_id=woveinfluency/record-eyedrops-50-ep \
+    --policy.type=act \
+    --policy.repo_id=woveinfluency/lerobot_eyedrops\
+    --output_dir=content/drive/MyDrive/lerobot_outputs \
+    --job_name=record-eyedrops-50-ep \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --batch_size=4 \
+    --num_workers=2 \
+    --steps=1000
+#   # --eval.batch_size=10 \
+#   # --eval.n_episodes=10 \
+# --output_dir=outputs/train \
+
+!python lerobot/scripts/train.py \
+    --dataset.repo_id=woveinfluency/record-eyedrops-50-ep \
+    --policy.type=act \
+    --policy.repo_id=woveinfluency/lerobot_eyedrops\
+    --output_dir=content/drive/MyDrive/lerobot_outputs \
+    --job_name=record-eyedrops-50-ep \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --batch_size=4 \
+    --num_workers=2 \
+    --resume=true \
+    --config_path=./outputs/train/checkpoints/last/pretrained_model/train_config.json \
+    --save_freq=1000 \
+    --eval_freq=1000 \
+    --load_best_model_at_end=True \
+    --steps=100000
+
+        # --output_dir=outputs/train \
+
+
+
+
+
+!huggingface-cli upload woveinfluency/lerobot_eyedrops \
+    outputs/train/checkpoints/last/pretrained_model
+
+!huggingface-cli upload woveinfluency/lerobot_eyedrops \
+    ./pretrained_model
+
+huggingface-cli upload woveinfluency/lerobot_eyedrops \
+    ./pretrained_model

@@ -1,0 +1,111 @@
+pip install lerobot
+lerobot-info
+
+Full training code is in this collab:
+so-101-pi0-bunny-50-episodes.ipynb
+
+lerobot-info 
+['lerobot-calibrate', 'lerobot-dataset-viz', 'lerobot-edit-dataset', 
+'lerobot-eval', 'lerobot-find-cameras', 'lerobot-find-joint-limits', 
+'lerobot-find-port', 'lerobot-imgtransform-viz', 'lerobot-info', 'lerobot-record', 
+'lerobot-replay', 'lerobot-setup-motors', 'lerobot-teleoperate', 'lerobot-train']
+
+HUGGINGFACE_TOKEN=**** && huggingface-cli login --token ${HUGGINGFACE_TOKEN} --add-to-git-credential
+HF_USER=woveinfluency
+wandb ****
+
+# teleoperate
+lerobot-teleoperate \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm
+
+# ##### Record a dataset #####
+# IrunWebcam with only Samsung Ultra s23 camera
+# 2 cameras crash
+--robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 30}, top: {type: opencv, index_or_path: 2, width: 1920, height: 1080, fps: 30} }" \
+
+# 1 camera (THIS IS MY DATASET!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!)
+lerobot-record \
+  --robot.type=so101_follower \
+  --robot.port=/dev/tty.usbmodem5A680105781 \
+  --robot.id=my_awesome_follower_arm \
+  --robot.cameras="{ front: {type: opencv, index_or_path: 1, width: 1920, height: 1080, fps: 60}}" \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/tty.usbmodem5A680087821 \
+  --teleop.id=my_awesome_leader_arm \
+  --display_data=true \
+  --dataset.repo_id=${HF_USER}/bunny-pi0-test \
+  --dataset.num_episodes=50 \
+  --dataset.single_task="Grab the bunny and place it in a white plate."
+
+      
+lerobot-eval \
+  --policy.path=lerobot/pi0_libero_finetuned \
+  --env.type=libero \
+  --env.task=libero_object \
+  --eval.n_episodes=10
+
+# 2 cameras !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+lerobot-record \
+  --robot.type=so101_follower \
+  --robot.port=/dev/tty.usbmodem5A680105781 \
+  --robot.id=my_awesome_follower_arm \
+  --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 30}, top: {type: opencv, index_or_path: 2, width: 1920, height: 1080, fps: 30} }" \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/tty.usbmodem5A680087821 \
+  --teleop.id=my_awesome_leader_arm \
+  --display_data=true \
+  --dataset.repo_id=${HF_USER}/bunny-pi0-two-cameras-6 \
+  --dataset.num_episodes=50 \
+  --dataset.single_task="Place all bunnies on a white plate."
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+#EVAL
+###### make sure to set HF_USER ~~~~~~ and log in~~~~
+
+HF_HUB_DISABLE_XET=1 hf download woveinfluency/bunny-pi0-policy 
+
+rm -fr /Users/shisyu/.cache/huggingface/lerobot/woveinfluency/eval_bunny-pi0-test
+
+TOKENIZERS_PARALLELISM=false
+
+HF_USER=woveinfluency TORCH_COMPILE=0 TOKENIZERS_PARALLELISM=false HF_HUB_DISABLE_XET=1 lerobot-record \
+  --robot.type=so101_follower \
+  --robot.port=/dev/tty.usbmodem5A680105781 \
+  --robot.cameras="{ front: {type: opencv, index_or_path: 1, width: 1920, height: 1080, fps: 60}}" \
+  --robot.id=my_awesome_follower_arm \
+  --display_data=True \
+  --policy.device=cpu \
+  --dataset.repo_id=${HF_USER}/eval_bunny-pi0-test \
+  --dataset.push_to_hub=false \
+  --dataset.single_task="Grab the bunny and place it in a white plate." \
+  --policy.path=woveinfluency/bunny-pi0-policy
+  
+  --policy.type=pi0 \
+  --dataset.num_episodes=2 \
+  --policy.path=/Users/shisyu/Downloads/model.safetensors
+
+# training so-101-pi0-bunny-50-episodes.ipynb
+# A100 (80GB) high RAM (160 GB)
+
+!rm -fr ./outputs/pi0_training
+%cd /content/lerobot
+
+!lerobot-train \
+    --dataset.repo_id=woveinfluency/bunny-pi0-test \
+    --policy.type=pi0 \
+    --output_dir=./outputs/pi0_training \
+    --job_name=pi0_training \
+    --policy.pretrained_path=lerobot/pi0_base \
+    --policy.repo_id=woveinfluency/bunny-pi0-policy \
+    --policy.compile_model=true \
+    --policy.gradient_checkpointing=true \
+    --policy.dtype=bfloat16 \
+    --wandb.enable=true \
+    --steps=1000 \
+    --policy.device=cuda \
+    --log_freq=100 \
+    --batch_size=64

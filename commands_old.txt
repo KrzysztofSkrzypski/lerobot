@@ -1,0 +1,240 @@
+conda activate lerobot
+
+
+python -m lerobot.calibrate \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm
+
+python -m lerobot.calibrate \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm
+
+
+python -m lerobot.teleoperate \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm
+
+
+python -m lerobot.teleoperate \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 5}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm \
+    --display_data=true
+
+
+python -m lerobot.record \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 5}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm \
+    --display_data=true \
+    --dataset.repo_id=${HF_USER}/record-test \
+    --dataset.num_episodes=2 \
+    --dataset.single_task="Grab the yellow screwdriver"
+
+
+python -m lerobot.replay \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --dataset.repo_id=${HF_USER}/record-test \
+    --dataset.episode=0
+
+
+python -m lerobot.record \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem5A680105781 \
+    --robot.id=my_awesome_follower_arm \
+    --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 5}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem5A680087821 \
+    --teleop.id=my_awesome_leader_arm \
+    --display_data=true \
+    --dataset.repo_id=${HF_USER}/record-eyedrops-50-ep \
+    --dataset.num_episodes=50 \
+    --dataset.single_task="Grab the eyedrops"
+
+
+##### evaluate:
+#### evaluate in simulation:
+
+python -m lerobot.scripts.eval \
+  --policy.path=woveinfluency/lerobot_eyedrops \
+  --env.type=pusht \
+  --eval.n_episodes=10 \
+  --eval.batch_size=10 \
+  --policy.device=mps
+
+#### real arm:
+
+python -m lerobot.record \
+  --robot.type=so101_follower \
+  --robot.port=/dev/tty.usbmodemXXXXX \
+  --robot.id=my_awesome_follower_arm \
+  --teleop.type=so101_leader \
+  --teleop.port=/dev/tty.usbmodemYYYYY \
+  --teleop.id=my_awesome_leader_arm \
+  --display_data=true \
+  --dataset.repo_id=${HF_USER}/eval-eyedrops-50-ep \
+  --dataset.single_task="Grab the eyedrops" \
+  --policy.path=woveinfluency/lerobot_eyedrops \
+  --dataset.num_episodes=10
+
+
+# not working, some problem, screen is shown then
+# RuntimeError: another MuJoCo viewer is already open
+mjpython -m lerobot.scripts.eval \
+  --policy.path=woveinfluency/lerobot_eyedrops \
+  --env.type=hil \
+  --eval.n_episodes=10 \
+  --eval.batch_size=10 \
+  --policy.device=mps
+
+### gamepad??????? <-------- look into this
+mjpython -m lerobot.scripts.eval \
+  --policy.path=woveinfluency/lerobot_eyedrops \
+  --env.type=hil \
+  --eval.n_episodes=10 \
+  --eval.batch_size=10 \
+  --policy.device=mps \
+  --env.use_viewer=false
+
+
+
+python lerobot/scripts/train.py \
+  --dataset.repo_id=${HF_USER}/record-test-10-ep \
+  --policy.type=act \
+  --output_dir=outputs/train/act_record-test-10-ep \
+  --job_name=act_record-test-10-ep \
+  --policy.device=mps \
+  --eval.batch_size=10 \
+  --eval.n_episodes=10 \
+  --wandb.enable=true
+
+
+
+python -m lerobot.record \
+    --robot.type=so101_follower \
+    --robot.port=/dev/tty.usbmodem585A0076841 \
+    --robot.id=my_awesome_follower_arm \
+    --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 1920, height: 1080, fps: 30}}" \
+    --teleop.type=so101_leader \
+    --teleop.port=/dev/tty.usbmodem58760431551 \
+    --teleop.id=my_awesome_leader_arm \
+    --display_data=true \
+    --dataset.repo_id=${HF_USER}/record-test \
+    --dataset.num_episodes=2 \
+    --dataset.single_task="Grab the black cube"
+
+
+Servos:
+== LEADER
+python -m lerobot.setup_motors --teleop.type=so101_leader --teleop.port=/dev/tty.usbmodem5A680087821
+
+Connect the controller board to the 'gripper' motor only and press enter.
+'gripper' motor id set to 6
+Connect the controller board to the 'wrist_roll' motor only and press enter.
+'wrist_roll' motor id set to 5
+Connect the controller board to the 'wrist_flex' motor only and press enter.
+'wrist_flex' motor id set to 4
+Connect the controller board to the 'elbow_flex' motor only and press enter.
+'elbow_flex' motor id set to 3
+Connect the controller board to the 'shoulder_lift' motor only and press enter.
+'shoulder_lift' motor id set to 2
+Connect the controller board to the 'shoulder_pan' motor only and press enter.
+'shoulder_pan' motor id set to 1
+
+
+== FOLLOWER
+python -m lerobot.setup_motors --robot.type=so101_follower --robot.port=/dev/tty.usbmodem5A680105781
+
+Connect the controller board to the 'gripper' motor only and press enter.
+'gripper' motor id set to 6
+Connect the controller board to the 'wrist_roll' motor only and press enter.
+'wrist_roll' motor id set to 5
+Connect the controller board to the 'wrist_flex' motor only and press enter.
+'wrist_flex' motor id set to 4
+Connect the controller board to the 'elbow_flex' motor only and press enter.
+'elbow_flex' motor id set to 3
+Connect the controller board to the 'shoulder_lift' motor only and press enter.
+'shoulder_lift' motor id set to 2
+Connect the controller board to the 'shoulder_pan' motor only and press enter.
+'shoulder_pan' motor id set to 1
+
+
+HUGGINGFACE_TOKEN=**** && huggingface-cli login --token ${HUGGINGFACE_TOKEN} --add-to-git-credential  
+WANDB_TOKEN=****
+
+===============================================================================================================
+!pip install -q condacolab
+import condacolab
+condacolab.install()
+# ### restart session ###
+
+!git clone https://github.com/huggingface/lerobot.git
+%cd lerobot
+!conda install ffmpeg=7.1.1 -c conda-forge
+!pip install -e .
+
+# !pip install huggingface_hub[cli]
+from huggingface_hub import login
+login() 
+from huggingface_hub import whoami
+print(whoami())
+
+!wandb login
+
+%cd /content/lerobot
+
+from google.colab import drive
+drive.mount('/content/drive')
+
+%cd /content/lerobot
+
+# test 1000 steps run
+!python lerobot/scripts/train.py \
+    --dataset.repo_id=woveinfluency/record-eyedrops-50-ep \
+    --policy.type=act \
+    --policy.repo_id=woveinfluency/lerobot_eyedrops\
+    --output_dir=content/drive/MyDrive/lerobot_outputs \
+    --job_name=record-eyedrops-50-ep \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --batch_size=4 \
+    --num_workers=2 \
+    --steps=1000
+#   # --eval.batch_size=10 \
+#   # --eval.n_episodes=10 \
+# --output_dir=outputs/train \
+
+!python lerobot/scripts/train.py \
+    --dataset.repo_id=woveinfluency/record-eyedrops-50-ep \
+    --policy.type=act \
+    --policy.repo_id=woveinfluency/lerobot_eyedrops\
+    --output_dir=content/drive/MyDrive/lerobot_outputs \
+    --job_name=record-eyedrops-50-ep \
+    --policy.device=cuda \
+    --wandb.enable=true \
+    --batch_size=4 \
+    --num_workers=2 \
+    --resume=true \
+    --config_path=./outputs/train/checkpoints/last/pretrained_model/train_config.json \
+    --save_freq=1000 \
+    --eval_freq=1000 \
+    --load_best_model_at_end=True \
+    --steps=100000
+
+        # --output_dir=outputs/train \
